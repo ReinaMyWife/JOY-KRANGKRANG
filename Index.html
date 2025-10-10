@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Lightning's Legacy | Reina Story - Tekken Lite</title>
+
+    <style>
+        :root {
+            /* Palette Warna */
+            --color-mishima-red: #ff3333;
+            --color-mishima-dark: #1a1a1a;
+            --color-lightning-blue: #00f0ff;
+            --font-game: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: var(--color-mishima-dark);
+            color: white;
+            font-family: var(--font-game);
+            overflow: hidden; /* Mencegah scroll */
+        }
+
+        #gameContainer {
+            width: 900px;
+            height: 600px;
+            border: 5px solid var(--color-lightning-blue);
+            box-shadow: 0 0 30px var(--color-lightning-blue), inset 0 0 10px var(--color-lightning-blue);
+            position: relative;
+            background-color: rgba(0, 0, 0, 0.9);
+            overflow: hidden;
+        }
+
+        /* Status Layar */
+        .game-screen {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+            transition: opacity 0.5s ease;
+        }
+
+        .game-screen.active {
+            display: flex;
+        }
+
+        /* Gaya Menu Utama */
+        #mainMenu h1 {
+            font-size: 4em;
+            color: var(--color-mishima-red);
+            text-shadow: 0 0 10px var(--color-mishima-red);
+            margin-bottom: 5px;
+        }
+
+        #mainMenu h2 {
+            font-size: 1.2em;
+            color: var(--color-lightning-blue);
+            margin-bottom: 40px;
+        }
+
+        /* Tombol */
+        #menuOptions button, .story-choice, #gameOverScreen button {
+            background-color: var(--color-mishima-dark);
+            color: white;
+            border: 2px solid var(--color-lightning-blue);
+            padding: 10px 30px;
+            margin: 10px 0;
+            font-size: 1.1em;
+            cursor: pointer;
+            width: 300px;
+            transition: all 0.2s ease;
+        }
+
+        #menuOptions button:hover, .story-choice:hover, #gameOverScreen button:hover {
+            background-color: var(--color-lightning-blue);
+            color: var(--color-mishima-dark);
+            box-shadow: 0 0 15px var(--color-lightning-blue);
+        }
+
+        /* Gaya Story Mode (Visual Novel) */
+        #storyModeScreen {
+            justify-content: flex-end; /* Taruh elemen di bawah */
+            background-image: url('https://via.placeholder.com/900x600/111111/FFFFFF?text=DOJO+MISHIMA+SCENE'); /* Placeholder Background */
+            background-size: cover;
+        }
+
+        #dialogBox {
+            width: 100%;
+            min-height: 100px;
+            background-color: rgba(0, 0, 0, 0.85);
+            border-top: 3px solid var(--color-lightning-blue);
+            padding: 15px;
+            text-align: left;
+            box-sizing: border-box;
+        }
+
+        #characterName {
+            color: var(--color-mishima-red);
+            font-weight: bold;
+            font-size: 1.3em;
+            margin: 0 0 5px 0;
+        }
+
+        #dialogueText {
+            margin: 0;
+            font-size: 1.1em;
+            overflow: hidden;
+            border-right: .15em solid orange; /* Efek ketik kursor */
+            white-space: nowrap; /* Teks tidak melompat */
+            /* Animasi ketik (nanti di JS) */
+        }
+        
+        #choiceOptions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 20px;
+            background-color: rgba(0, 0, 0, 0.7);
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        #choiceOptions.hidden {
+            display: none;
+        }
+
+        /* Gaya Kanvas Gameplay */
+        #gameCanvas {
+            border: none; /* Border sudah ada di #gameContainer */
+        }
+    </style>
+</head>
+<body>
+
+    <main id="gameContainer">
+
+        <section id="mainMenu" class="game-screen active">
+            <h1>THE LIGHTNING'S LEGACY</h1>
+            <h2>Reina Mishima: A Fan Project</h2>
+            <nav id="menuOptions">
+                <button data-action="startStory">MULAI STORY MODE</button>
+                <button data-action="loadGame">LANJUTKAN GAME</button>
+                <button data-action="options">PENGATURAN</button>
+                <button data-action="credits">KREDIT</button>
+            </nav>
+        </section>
+        
+        <section id="charSelectScreen" class="game-screen hidden">
+            <h2>PILIH KARAKTER</h2>
+            <div id="characterPreview">
+                <img src="https://via.placeholder.com/150/ff3333/FFFFFF?text=REINA" alt="Reina Mishima">
+                <h3>REINA</h3>
+                <p>Anak ajaib dari Mishima Zaibatsu. Pewaris Badai.</p>
+            </div>
+            <button data-action="confirmChar">KONFIRMASI</button>
+            <button data-action="backToMain">KEMBALI</button>
+        </section>
+
+        <section id="storyModeScreen" class="game-screen hidden">
+            <div id="choiceOptions" class="hidden">
+                </div>
+
+            <div id="dialogBox">
+                <p id="characterName">REINA</p>
+                <p id="dialogueText">...</p>
+            </div>
+        </section>
+        
+        <section id="gameplayScreen" class="game-screen hidden">
+            <canvas id="gameCanvas" width="800" height="600">
+                Browser Anda tidak mendukung HTML Canvas.
+            </canvas>
+            <p style="margin-top: 20px;">[Area Pertarungan - Game Engine Dimulai di Sini]</p>
+        </section>
+
+        <section id="gameOverScreen" class="game-screen hidden">
+            <h2>GAME OVER</h2>
+            <p id="gameOverReason">Jatuh ke dalam kegelapan yang tak terhindarkan.</p>
+            <button data-action="retry">ULANGI DARI CHECKPOINT</button>
+            <button data-action="backToMain">KEMBALI KE MENU</button>
+        </section>
+
+    </main>
+
+    <script>
+        // Data Story Reina (Sama seperti yang kita rancang sebelumnya)
+        const reinaStory = {
+            'CHAPTER_1_START': {
+                title: "The Silent Summit",
+                background: 'https://via.placeholder.com/900x600/333333/FFFFFF?text=DOJO+SCENE',
+                dialogue: [
+                    { character: "REINA", line: "Malam ini, guntur bergemuruh. Sama seperti di dalam diriku." },
+                    { character: "MASTER", line: "Energi itu... kamu sudah siap, Reina?" }
+                ],
+                next: 'CHOICE_1'
+            },
+            'CHOICE_1': {
+                title: "Pilih Jalan",
+                type: "choice",
+                options: [
+                    { text: "Mengikuti jejak Kakek (Heihachi)", nextNode: 'PATH_HEIHACHI_1' },
+                    { text: "Menciptakan jalan sendiri", nextNode: 'PATH_OWN_1' }
+                ]
+            },
+            'PATH_HEIHACHI_1': {
+                title: "Jalan Kekuatan Brutal",
+                background: 'https://via.placeholder.com/900x600/ff3333/FFFFFF?text=HEIHACHI+PATH',
+                dialogue: [
+                    { character: "REINA", line: "Kekuatan adalah segalanya. Sama seperti yang dia ajarkan. Aku memilih jalan itu." },
+                ],
+                next: 'FIGHT_KAZUYA_CH1' 
+            },
+            'PATH_OWN_1': {
+                title: "Jalan Sendiri",
+                background: 'https://via.placeholder.com/900x600/00f0ff/FFFFFF?text=OWN+PATH',
+                dialogue: [
+                    { character: "REINA", line: "Aku adalah diriku sendiri. Bukan bayangan siapa pun. Aku akan mendefinisikan Guntur." },
+                ],
+                next: 'FIGHT_JIN_CH1' 
+            },
+            'FIGHT_KAZUYA_CH1': {
+                type: "fight",
+                opponent: "KAZUYA",
+                stage: "VOLCANO",
+                onWin: 'CHAPTER_2_START',
+                onLose: 'GAME_OVER_CH1_FAIL'
+            },
+            'GAME_OVER_CH1_FAIL': {
+                type: 'gameover',
+                reason: 'Guntur itu terlalu kuat. Kamu gagal mewarisi kekuatan.'
+            },
+            'CHAPTER_2_START': {
+                type: 'dialogue',
+                background: 'https://via.placeholder.com/900x600/00FF00/FFFFFF?text=CHAPTER+2',
+                dialogue: [{ character: "NARRATOR", line: "Kamu berhasil! Lanjut ke babak 2. (Tekan tombol apa saja untuk ke Menu Utama)" }],
+                next: 'MAIN_MENU'
+            }
+        };
+
+        // Variabel Global
+        const $screens = document.querySelectorAll('.game-screen');
+        const $storyScreen = document.getElementById('storyModeScreen');
+        const $dialogueText = document.getElementById('dialogueText');
+        const $characterName = document.getElementById('characterName');
+        const $choiceOptions = document.getElementById('choiceOptions');
+        const $gameOverReason = document.getElementById('gameOverReason');
+        
+        let currentStoryNodeKey = 'CHAPTER_1_START';
+        let currentDialogueIndex = 0;
+        let isTyping = false;
+        
+        // ===================================
+        // FUNGSI UTAMA: UI MANAGER
+        // ===================================
+
+        /** Menampilkan layar yang diminta dan menyembunyikan sisanya */
+        function showScreen(screenId) {
+            $screens.forEach(screen => {
+                screen.classList.remove('active');
+            });
+            const targetScreen = document.getElementById(screenId);
+            if (targetScreen) {
+                targetScreen.classList.add('active');
+            }
+        }
+
+        /** Memuat Node cerita, menangani dialog, pilihan, atau pertarungan */
+        function loadStoryNode(nodeKey) {
+            currentStoryNodeKey = nodeKey;
+            const node = reinaStory[nodeKey];
+            currentDialogueIndex = 0;
+
+            if (!node) {
+                console.error(`Story node tidak ditemukan: ${nodeKey}`);
+                showScreen('mainMenu');
+                return;
+            }
+
+            // Atur Latar Belakang
+            $storyScreen.style.backgroundImage = `url('${node.background || 'none'}')`;
+            $choiceOptions.classList.add('hidden'); // Selalu sembunyikan pilihan dulu
+
+            if (node.type === 'gameover') {
+                $gameOverReason.textContent = node.reason;
+                showScreen('gameOverScreen');
+                return;
+            }
+
+            if (node.type === 'fight') {
+                // Dalam implementasi nyata, kita akan memuat game engine di sini
+                alert(`Memulai Pertarungan: Reina vs ${node.opponent} di ${node.stage}!`);
+                showScreen('gameplayScreen');
+                return;
+            }
+
+            if (node.type === 'choice') {
+                // Mode Pilihan
+                $dialogueText.textContent = node.title;
+                $characterName.textContent = 'SYSTEM';
+                renderChoices(node.options);
+                return;
+            }
+
+            // Default: Mode Dialog
+            showScreen('storyModeScreen');
+            startDialogue();
+        }
+
+        /** Menampilkan satu baris dialog per satu waktu */
+        function startDialogue() {
+            const node = reinaStory[currentStoryNodeKey];
+            if (currentDialogueIndex < node.dialogue.length) {
+                const dialog = node.dialogue[currentDialogueIndex];
+                $characterName.textContent = dialog.character;
+                typeWriterEffect(dialog.line);
+            } else {
+                // Semua dialog selesai, lanjut ke node berikutnya
+                if (node.next === 'MAIN_MENU') {
+                    showScreen('mainMenu');
+                } else if (node.next) {
+                    loadStoryNode(node.next);
+                }
+            }
+        }
+
+        /** Efek Ketik (Typewriter) untuk dialog */
+        function typeWriterEffect(text) {
+            isTyping = true;
+            $dialogueText.textContent = '';
+            let charIndex = 0;
+            const speed = 25; // Kecepatan ketik (ms)
+
+            function type() {
+                if (charIndex < text.length) {
+                    $dialogueText.textContent += text.charAt(charIndex);
+                    charIndex++;
+                    setTimeout(type, speed);
+                } else {
+                    isTyping = false;
+                }
+            }
+            type();
+        }
+
+        /** Menggambar tombol pilihan pada Story Mode */
+        function renderChoices(options) {
+            $choiceOptions.innerHTML = ''; // Bersihkan
+            options.forEach(option => {
+                const button = document.createElement('button');
+                button.classList.add('story-choice');
+                button.textContent = option.text;
+                button.onclick = () => loadStoryNode(option.nextNode);
+                $choiceOptions.appendChild(button);
+            });
+            $choiceOptions.classList.remove('hidden');
+        }
+
+
+        // ===================================
+        // EVENT HANDLERS (LISTENER)
+        // ===================================
+
+        // 1. Event Klik Tombol Menu/UI
+        document.addEventListener('click', (event) => {
+            const action = event.target.getAttribute('data-action');
+            if (action) {
+                switch (action) {
+                    case 'startStory':
+                        showScreen('charSelectScreen'); // Pindah ke Pilihan Karakter dulu
+                        break;
+                    case 'confirmChar':
+                        loadStoryNode('CHAPTER_1_START'); // Mulai cerita Reina
+                        break;
+                    case 'backToMain':
+                    case 'loadGame':
+                    case 'options':
+                    case 'credits':
+                    case 'retry':
+                        showScreen('mainMenu');
+                        break;
+                }
+            }
+        });
+
+        // 2. Event Klik di Layar Story Mode untuk Lanjut Dialog
+        $storyScreen.addEventListener('click', () => {
+            const node = reinaStory[currentStoryNodeKey];
+            if (node.type === 'choice') return; // Jangan lakukan apa-apa jika sedang mode pilihan
+            
+            if (isTyping) {
+                // Lewati efek ketik
+                $dialogueText.textContent = node.dialogue[currentDialogueIndex].line;
+                isTyping = false;
+            } else if (currentDialogueIndex < node.dialogue.length) {
+                // Lanjut ke dialog berikutnya
+                currentDialogueIndex++;
+                startDialogue();
+            }
+        });
+
+        // ===================================
+        // INISIALISASI
+        // ===================================
+        showScreen('mainMenu'); // Pastikan menu utama yang muncul saat pertama kali load
+    </script>
+</body>
+  </html>
